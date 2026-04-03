@@ -1,15 +1,20 @@
 """
-Treinamento dos modelos de deteccao de anomalias contratuais — MTR-Saude.
+Pipeline de treinamento — MTR-Saude v2.1
 
-Pipeline:
-    1. Carrega features de todos os contratos do banco SQLite
-    2. Treina Isolation Forest  (deteccao nao-supervisionada)
-    3. Normaliza scores para [0, 1]  (0 = normal, 1 = altamente anomalo)
-    4. Gera pseudo-labels a partir do score IF
-    5. Aplica SMOTE para balancear as classes
-    6. Treina XGBoost  (classificacao baixo / medio / alto)
-    7. Gera SHAP explainer e salva
-    8. Persiste score_anomalia e nivel_risco no banco para todos os contratos
+Etapas:
+    1. Carrega features dos 41k contratos reais do banco
+    2. Treina Isolation Forest (deteccao nao-supervisionada)
+    3. Normaliza scores IF para [0, 1]
+    4. Gera dataset sintetico baseado em casos TCU/MPF
+    5. Monta dataset de treino:
+          real normals (IF score < 0.40)      -> classe 0 normal
+          sintetico falha_preenchimento        -> classe 1
+          sintetico fraude_intencional         -> classe 2
+          real alto risco (IF score >= 0.65)   -> classe 2 (reforca fraude)
+    6. Aplica SMOTE e treina XGBoost 3-classes
+    7. Gera SHAP explainer
+    8. Classifica todos os contratos reais -> tipo_anomalia
+    9. Persiste score_anomalia, nivel_risco e tipo_anomalia no banco
 
 Uso:
     python -m src.ml.treinar
@@ -29,8 +34,9 @@ import shap
 
 from src.database.postgres import SessionLocal, Contrato, create_tables
 from src.ml.features import carregar_features_df, FEATURE_COLS
+from src.ml.dados_sinteticos import gerar_dataset, resumo_catalogo
 
-# ── Configuracao ─────────────────────────────────────────────────────────────
+# ── Config ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -41,12 +47,12 @@ logger = logging.getLogger(__name__)
 MODELS_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
-# Limiares de risco (percentil sobre score normalizado)
 LIMIAR_ALTO  = 0.65
 LIMIAR_MEDIO = 0.40
 
+LABEL_NOME = {0: "normal", 1: "falha_preenchimento", 2: "fraude_intencional"}
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+
 def _nivel_risco(score: float) -> str:
     if score >= LIMIAR_ALTO:
         return "alto"
@@ -55,33 +61,26 @@ def _nivel_risco(score: float) -> str:
     return "baixo"
 
 
-def _classe(score: float) -> int:
-    if score >= LIMIAR_ALTO:
-        return 2
-    if score >= LIMIAR_MEDIO:
-        return 1
-    return 0
+# ── Pipeline ─────────────────────────────────────────────────────────────────
 
-
-# ── Pipeline principal ────────────────────────────────────────────────────────
 def treinar() -> None:
     create_tables()
 
-    # 1. Features
-    logger.info("Carregando features do banco...")
+    # ── 1. Features reais ────────────────────────────────────────────────────
+    logger.info("Carregando features dos contratos reais...")
     db = SessionLocal()
     try:
-        df = carregar_features_df(db)
+        df_real = carregar_features_df(db)
     finally:
         db.close()
 
-    n_total = len(df)
-    logger.info("Total de contratos carregados: %d", n_total)
+    n_real = len(df_real)
+    logger.info("  %d contratos reais carregados.", n_real)
 
-    X   = df[FEATURE_COLS].values.astype(float)
-    ids = df["id"].values
+    X_real = df_real[FEATURE_COLS].values.astype(float)
+    ids    = df_real["id"].values
 
-    # 2. Isolation Forest
+    # ── 2. Isolation Forest ──────────────────────────────────────────────────
     logger.info("Treinando Isolation Forest (n_estimators=200, contamination=0.10)...")
     if_model = IsolationForest(
         n_estimators=200,
@@ -90,45 +89,61 @@ def treinar() -> None:
         random_state=42,
         n_jobs=-1,
     )
-    if_model.fit(X)
+    if_model.fit(X_real)
 
-    # score_samples retorna valores negativos: mais negativo = mais anomalo
-    raw_scores = if_model.score_samples(X)
-
-    # Inverter sinal e normalizar para [0, 1]
+    raw_scores  = if_model.score_samples(X_real)
     scaler      = MinMaxScaler()
     scores_norm = scaler.fit_transform((-raw_scores).reshape(-1, 1)).flatten()
 
     joblib.dump(if_model, MODELS_DIR / "isolation_forest.pkl")
     joblib.dump(scaler,   MODELS_DIR / "if_scaler.pkl")
-    logger.info("Modelo Isolation Forest salvo em %s", MODELS_DIR)
+    logger.info("  Isolation Forest salvo.")
 
-    # 3. Pseudo-labels
-    labels = np.array([_classe(s) for s in scores_norm])
-    unique, counts = np.unique(labels, return_counts=True)
-    logger.info("Distribuicao de pseudo-labels (IF):")
-    for u, c in zip(unique, counts):
-        nomes = {0: "baixo", 1: "medio", 2: "alto"}
-        logger.info("  %s: %d contratos (%.1f%%)", nomes[u], c, 100 * c / n_total)
+    # ── 3. Dados sinteticos TCU/MPF ──────────────────────────────────────────
+    resumo_catalogo()
+    logger.info("Gerando dataset sintetico (casos TCU/MPF)...")
+    df_sint = gerar_dataset(n_normais=300)
+    logger.info("  Amostras sinteticas: %d", len(df_sint))
+    logger.info("  Distribuicao:\n%s", df_sint["tipo_anomalia"].value_counts().to_string())
 
-    # 4. SMOTE
-    logger.info("Aplicando SMOTE para balancear classes...")
-    min_class_count = int(counts.min())
-    k_neighbors     = min(5, min_class_count - 1)
-    if k_neighbors < 1:
-        logger.warning("Classe muito pequena — SMOTE ignorado, usando dados originais.")
-        X_bal, y_bal = X, labels
-    else:
-        smote        = SMOTE(random_state=42, k_neighbors=k_neighbors)
-        X_bal, y_bal = smote.fit_resample(X, labels)
-        logger.info("  Amostras apos SMOTE: %d", len(X_bal))
+    X_sint = df_sint[FEATURE_COLS].values.astype(float)
+    y_sint = df_sint["classe"].values.astype(int)
 
-    # 5. XGBoost
-    logger.info("Treinando XGBoost (n_estimators=200)...")
+    # ── 4. Dataset supervisionado misto ─────────────────────────────────────
+    # Pega contratos reais normais (IF score < 0.40) como classe 0
+    mask_normal   = scores_norm < LIMIAR_MEDIO
+    mask_alto     = scores_norm >= LIMIAR_ALTO
+
+    X_real_normal = X_real[mask_normal]
+    y_real_normal = np.zeros(mask_normal.sum(), dtype=int)
+
+    # Contratos reais com alto risco -> reforco da classe 2 (fraude)
+    X_real_alto   = X_real[mask_alto]
+    y_real_alto   = np.full(mask_alto.sum(), 2, dtype=int)
+
+    X_train = np.vstack([X_real_normal, X_real_alto, X_sint])
+    y_train = np.concatenate([y_real_normal, y_real_alto, y_sint])
+
+    logger.info("Dataset supervisionado:")
+    for cls, nome in LABEL_NOME.items():
+        n = (y_train == cls).sum()
+        logger.info("  %s: %d", nome, n)
+
+    # ── 5. SMOTE ─────────────────────────────────────────────────────────────
+    logger.info("Aplicando SMOTE...")
+    unique, counts = np.unique(y_train, return_counts=True)
+    k_neighbors    = min(5, int(counts.min()) - 1)
+    k_neighbors    = max(1, k_neighbors)
+    smote          = SMOTE(random_state=42, k_neighbors=k_neighbors)
+    X_bal, y_bal   = smote.fit_resample(X_train, y_train)
+    logger.info("  Apos SMOTE: %d amostras", len(X_bal))
+
+    # ── 6. XGBoost 3-classes ─────────────────────────────────────────────────
+    logger.info("Treinando XGBoost (3 classes: normal / falha / fraude)...")
     xgb = XGBClassifier(
-        n_estimators=200,
-        max_depth=5,
-        learning_rate=0.1,
+        n_estimators=300,
+        max_depth=6,
+        learning_rate=0.08,
         subsample=0.8,
         colsample_bytree=0.8,
         eval_metric="mlogloss",
@@ -138,55 +153,70 @@ def treinar() -> None:
     )
     xgb.fit(X_bal, y_bal)
     joblib.dump(xgb, MODELS_DIR / "xgboost_risco.pkl")
-    logger.info("Modelo XGBoost salvo.")
+    logger.info("  XGBoost salvo.")
 
-    # 6. SHAP
-    logger.info("Gerando SHAP explainer (amostra de ate 5000 contratos)...")
-    sample_size = min(5000, len(X))
-    idx_sample  = np.random.default_rng(42).choice(len(X), size=sample_size, replace=False)
-    explainer   = shap.TreeExplainer(xgb, data=X[idx_sample], feature_names=FEATURE_COLS)
+    # ── 7. SHAP ──────────────────────────────────────────────────────────────
+    logger.info("Gerando SHAP explainer (amostra de 5000)...")
+    idx_s     = np.random.default_rng(42).choice(len(X_real), size=min(5000, n_real), replace=False)
+    explainer = shap.TreeExplainer(xgb, data=X_real[idx_s], feature_names=FEATURE_COLS)
     joblib.dump(explainer, MODELS_DIR / "shap_explainer.pkl")
-    logger.info("SHAP explainer salvo.")
+    logger.info("  SHAP explainer salvo.")
 
-    # 7. Persistir no banco
-    logger.info("Atualizando score_anomalia e nivel_risco no banco...")
-    db = SessionLocal()
+    # ── 8. Classificar todos os contratos reais ───────────────────────────────
+    logger.info("Classificando todos os contratos reais...")
+    y_pred      = xgb.predict(X_real)
+    tipos_pred  = [LABEL_NOME[int(p)] for p in y_pred]
+
+    # ── 9. Persistir no banco ────────────────────────────────────────────────
+    logger.info("Salvando score_anomalia, nivel_risco e tipo_anomalia no banco...")
+    db    = SessionLocal()
     BATCH = 500
     try:
-        for start in range(0, n_total, BATCH):
-            end   = min(start + BATCH, n_total)
-            batch_ids     = ids[start:end]
-            batch_scores  = scores_norm[start:end]
-            batch_niveis  = [_nivel_risco(float(s)) for s in batch_scores]
-            for cid, sc, nr in zip(batch_ids, batch_scores, batch_niveis):
-                db.query(Contrato).filter(Contrato.id == int(cid)).update(
-                    {"score_anomalia": float(sc), "nivel_risco": nr},
+        for start in range(0, n_real, BATCH):
+            end = min(start + BATCH, n_real)
+            for i in range(start, end):
+                cid  = int(ids[i])
+                sc   = float(scores_norm[i])
+                nr   = _nivel_risco(sc)
+                tipo = tipos_pred[i]
+                db.query(Contrato).filter(Contrato.id == cid).update(
+                    {"score_anomalia": sc, "nivel_risco": nr, "tipo_anomalia": tipo},
                     synchronize_session=False,
                 )
             db.commit()
-            if end % 5000 == 0 or end == n_total:
-                logger.info("  Atualizados %d / %d", end, n_total)
+            if end % 5000 == 0 or end == n_real:
+                logger.info("  Atualizados %d / %d", end, n_real)
     except Exception as e:
         db.rollback()
-        logger.error("Erro ao salvar scores: %s", e)
+        logger.error("Erro ao salvar: %s", e)
         raise
     finally:
         db.close()
 
-    # Resumo final
+    # ── Resumo ───────────────────────────────────────────────────────────────
     alto  = int((scores_norm >= LIMIAR_ALTO).sum())
     medio = int(((scores_norm >= LIMIAR_MEDIO) & (scores_norm < LIMIAR_ALTO)).sum())
     baixo = int((scores_norm < LIMIAR_MEDIO).sum())
-    score_medio = float(scores_norm.mean())
 
-    logger.info("=" * 55)
-    logger.info("Treinamento concluido com sucesso!")
-    logger.info("  Score medio geral : %.4f", score_medio)
-    logger.info("  Alto risco        : %d contratos (%.1f%%)", alto,  100 * alto  / n_total)
-    logger.info("  Medio risco       : %d contratos (%.1f%%)", medio, 100 * medio / n_total)
-    logger.info("  Baixo risco       : %d contratos (%.1f%%)", baixo, 100 * baixo / n_total)
-    logger.info("  Modelos salvos em : %s", MODELS_DIR)
-    logger.info("=" * 55)
+    n_fraude = tipos_pred.count("fraude_intencional")
+    n_falha  = tipos_pred.count("falha_preenchimento")
+    n_normal = tipos_pred.count("normal")
+
+    logger.info("=" * 60)
+    logger.info("Treinamento concluido!")
+    logger.info("")
+    logger.info("Score (Isolation Forest):")
+    logger.info("  Alto risco   (>= 0.65): %6d  (%.1f%%)", alto,  100 * alto  / n_real)
+    logger.info("  Medio risco  (0.40-0.64):%6d  (%.1f%%)", medio, 100 * medio / n_real)
+    logger.info("  Baixo risco  (< 0.40) : %6d  (%.1f%%)", baixo, 100 * baixo / n_real)
+    logger.info("")
+    logger.info("Tipo (XGBoost + casos TCU/MPF):")
+    logger.info("  fraude_intencional    : %6d  (%.1f%%)", n_fraude, 100 * n_fraude / n_real)
+    logger.info("  falha_preenchimento   : %6d  (%.1f%%)", n_falha,  100 * n_falha  / n_real)
+    logger.info("  normal                : %6d  (%.1f%%)", n_normal, 100 * n_normal / n_real)
+    logger.info("")
+    logger.info("  Modelos salvos em: %s", MODELS_DIR)
+    logger.info("=" * 60)
 
 
 if __name__ == "__main__":

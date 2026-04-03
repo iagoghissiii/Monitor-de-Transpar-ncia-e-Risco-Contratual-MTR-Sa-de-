@@ -82,7 +82,7 @@
             <!-- Análise de Anomalia -->
             <section class="section-box" style="margin-top: 1rem;">
                 <h2 style="margin-bottom: 1.5rem;font-size:1.1rem;">Análise de Anomalia</h2>
-                <div style="display: flex; gap: 2rem; align-items: flex-start;">
+                <div style="display: flex; gap: 2.5rem; align-items: flex-start; flex-wrap: wrap;">
                     <div>
                         <label style="font-size: 0.70rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.25rem; display: block;">Score de Anomalia</label>
                         <span id="score-anomalia" style="font-size: 2.2rem; font-weight: 700; line-height: 1;">0.0000</span>
@@ -91,16 +91,25 @@
                         <label style="font-size: 0.70rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.25rem; display: block;">Nível de Risco</label>
                         <span id="nivel-risco" style="display: inline-block; padding: 0.2rem 0.6rem; background-color: rgba(40, 167, 69, 0.2); color: #28a745; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">BAIXO</span>
                     </div>
+                    <div>
+                        <label style="font-size: 0.70rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.25rem; display: block;">Tipo de Ocorrência (IA)</label>
+                        <span id="tipo-anomalia">–</span>
+                        <div id="tipo-anomalia-desc" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; max-width: 320px; line-height: 1.4;"></div>
+                    </div>
                 </div>
-                <div style="width: 100%; height: 6px; background-color: var(--surface-hover); border-radius: 3px; overflow: hidden; margin-top: 1rem;">
-                    <div id="barra-risco" style="width: 25%; height: 100%; background-color: #28a745; border-radius: 3px;"></div>
+                <div style="width: 100%; height: 6px; background-color: var(--bg-input); border-radius: 3px; overflow: hidden; margin-top: 1.25rem;">
+                    <div id="barra-risco" style="width: 25%; height: 100%; background-color: #28a745; border-radius: 3px; transition: width 0.6s ease;"></div>
                 </div>
             </section>
 
             <!-- Por que este contrato foi sinalizado? -->
             <section class="section-box" style="margin-top: 1rem;">
-                <h2 style="margin-bottom: 1.2rem;font-size:1.1rem;">Por que este contrato foi sinalizado?</h2>
-                <div id="lista-anomalias" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <h2 style="margin-bottom: 1.2rem;font-size:1.1rem;">Principais fatores de risco (SHAP)</h2>
+                <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:1rem;">
+                    Os fatores abaixo mostram quais caracteristicas do contrato mais influenciaram a decisao do modelo,
+                    com base nos padroes aprendidos de casos reais do TCU e MPF.
+                </p>
+                <div id="lista-anomalias" style="display: flex; flex-direction: column; gap: 0.5rem;">
                     <!-- cards filled by JS -->
                 </div>
             </section>

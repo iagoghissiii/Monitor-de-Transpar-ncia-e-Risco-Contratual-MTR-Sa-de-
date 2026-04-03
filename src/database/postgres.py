@@ -68,8 +68,9 @@ class Contrato(Base):
     fonte = Column(String(50))
 
     # Score ML (preenchido apos src.ml.treinar)
-    score_anomalia = Column(Float, nullable=True)
-    nivel_risco    = Column(String(10), nullable=True)  # "baixo" | "medio" | "alto"
+    score_anomalia = Column(Float,     nullable=True)
+    nivel_risco    = Column(String(10), nullable=True)   # "baixo" | "medio" | "alto"
+    tipo_anomalia  = Column(String(25), nullable=True)   # "normal" | "falha_preenchimento" | "fraude_intencional"
 
 
 def create_tables() -> None:
@@ -84,6 +85,7 @@ def _migrar() -> None:
         "ALTER TABLE contratos ADD COLUMN id_externo VARCHAR(50)",
         "ALTER TABLE contratos ADD COLUMN score_anomalia REAL",
         "ALTER TABLE contratos ADD COLUMN nivel_risco VARCHAR(10)",
+        "ALTER TABLE contratos ADD COLUMN tipo_anomalia VARCHAR(25)",
     ]
     with engine.connect() as conn:
         for sql in migracoes:

@@ -37,7 +37,8 @@ class ContratoResponse(BaseModel):
     fornecedor: FornecedorResponse | None = None
     fonte: str | None = None
     score_anomalia: float | None = None
-    nivel_risco: str | None = None
+    nivel_risco:    str | None = None
+    tipo_anomalia:  str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -50,10 +51,11 @@ class FatorRisco(BaseModel):
 
 
 class ScoreResponse(BaseModel):
-    contrato_id: int
+    contrato_id:    int
     score_anomalia: float
-    nivel_risco: str
-    fatores: list[FatorRisco]
+    nivel_risco:    str
+    tipo_anomalia:  str | None = None
+    fatores:        list[FatorRisco]
 
 
 class ContratoListResponse(BaseModel):

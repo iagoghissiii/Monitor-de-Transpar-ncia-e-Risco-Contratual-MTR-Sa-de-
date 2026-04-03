@@ -121,6 +121,7 @@ async def score_contrato(contrato_id: int, db: Session = Depends(get_db)):
                 contrato_id=contrato_id,
                 score_anomalia=contrato.score_anomalia or 0.0,
                 nivel_risco=contrato.nivel_risco or "baixo",
+                tipo_anomalia=contrato.tipo_anomalia,
                 fatores=[],
             )
         resultado = _score(contrato)
@@ -128,6 +129,7 @@ async def score_contrato(contrato_id: int, db: Session = Depends(get_db)):
             contrato_id=contrato_id,
             score_anomalia=resultado["score_anomalia"],
             nivel_risco=resultado["nivel_risco"],
+            tipo_anomalia=resultado.get("tipo_anomalia"),
             fatores=resultado["fatores"],
         )
     except Exception as e:
@@ -136,5 +138,6 @@ async def score_contrato(contrato_id: int, db: Session = Depends(get_db)):
             contrato_id=contrato_id,
             score_anomalia=contrato.score_anomalia or 0.0,
             nivel_risco=contrato.nivel_risco or "baixo",
+            tipo_anomalia=contrato.tipo_anomalia,
             fatores=[],
         )

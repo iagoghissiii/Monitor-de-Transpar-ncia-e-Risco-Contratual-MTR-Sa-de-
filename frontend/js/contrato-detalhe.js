@@ -110,6 +110,39 @@ function preencherDados(c, scoreData) {
     document.getElementById("barra-risco").style.backgroundColor = riscoCor;
     document.getElementById("barra-risco").style.width = barraWidth;
 
+    // ── Tipo de anomalia (TCU/MPF) ────────────────────────────────
+    var tipo = (scoreData && scoreData.tipo_anomalia) ? scoreData.tipo_anomalia : (c.tipo_anomalia || null);
+    var tipoEl = document.getElementById("tipo-anomalia");
+    if (tipoEl) {
+        var tipoTexto, tipoCor, tipoBg, tipoDesc;
+        if (tipo === "fraude_intencional") {
+            tipoTexto = "Fraude Intencional";
+            tipoCor   = "#dc3545";
+            tipoBg    = "rgba(220, 53, 69, 0.12)";
+            tipoDesc  = "Padrao consistente com casos documentados pelo TCU/MPF (sobreprecamento, fracionamento, empresa fantasma ou cartel).";
+        } else if (tipo === "falha_preenchimento") {
+            tipoTexto = "Falha de Preenchimento";
+            tipoCor   = "#fd7e14";
+            tipoBg    = "rgba(253, 126, 20, 0.12)";
+            tipoDesc  = "Indicios de erro administrativo ou de sistema (data invalida, valor zerado, campo em branco). Sem evidencia de dolo.";
+        } else if (tipo === "normal") {
+            tipoTexto = "Normal";
+            tipoCor   = "#28a745";
+            tipoBg    = "rgba(40, 167, 69, 0.12)";
+            tipoDesc  = "Contrato dentro dos padroes normais. Nenhum padrao suspeito identificado pelo modelo.";
+        } else {
+            tipoTexto = "Nao classificado";
+            tipoCor   = "var(--text-muted)";
+            tipoBg    = "var(--bg-input)";
+            tipoDesc  = "Execute o treinamento (treinar_modelo.bat) para classificar este contrato.";
+        }
+        tipoEl.textContent = tipoTexto;
+        tipoEl.style.cssText = "display:inline-block;padding:0.3rem 0.8rem;border-radius:20px;font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;background:" + tipoBg + ";color:" + tipoCor + ";";
+
+        var tipoDescEl = document.getElementById("tipo-anomalia-desc");
+        if (tipoDescEl) tipoDescEl.textContent = tipoDesc;
+    }
+
     // ── Fatores SHAP ──────────────────────────────────────────────
     var listaAnomalias = document.getElementById("lista-anomalias");
     listaAnomalias.innerHTML = "";
@@ -118,27 +151,27 @@ function preencherDados(c, scoreData) {
 
     if (fatores) {
         fatores.forEach(function (f) {
-            var impacto   = f.impacto || 0;
-            var ehGrave   = Math.abs(impacto) > 0.1;
-            var bgColor   = ehGrave ? "rgba(220, 53, 69, 0.05)"  : "rgba(0, 123, 255, 0.05)";
-            var borderColor = ehGrave ? "rgba(220, 53, 69, 0.2)" : "rgba(0, 123, 255, 0.2)";
-            var iconColor = ehGrave ? "#dc3545" : "#007bff";
-            var direcao   = impacto > 0 ? "aumenta" : "reduz";
+            var impacto     = f.impacto || 0;
+            var ehPositivo  = impacto > 0;
+            var bgColor     = ehPositivo ? "rgba(220, 53, 69, 0.05)"   : "rgba(40, 167, 69, 0.05)";
+            var borderColor = ehPositivo ? "rgba(220, 53, 69, 0.2)"    : "rgba(40, 167, 69, 0.2)";
+            var iconColor   = ehPositivo ? "#dc3545"                   : "#28a745";
+            var seta        = ehPositivo ? "▲ aumenta risco"           : "▼ reduz risco";
 
             var div = document.createElement("div");
-            div.style.cssText = "background:" + bgColor + ";border:1px solid " + borderColor + ";padding:1rem;border-radius:8px;display:flex;align-items:flex-start;gap:0.75rem;";
+            div.style.cssText = "background:" + bgColor + ";border:1px solid " + borderColor + ";padding:1rem;border-radius:8px;display:flex;align-items:flex-start;gap:0.75rem;margin-bottom:0.5rem;";
 
             var bolinha = document.createElement("div");
-            bolinha.style.cssText = "width:8px;height:8px;border-radius:50%;background:" + iconColor + ";margin-top:0.35rem;flex-shrink:0;";
+            bolinha.style.cssText = "width:8px;height:8px;border-radius:50%;background:" + iconColor + ";margin-top:0.4rem;flex-shrink:0;";
 
             var textDiv = document.createElement("div");
             var titulo  = document.createElement("div");
             titulo.textContent = f.label || f.feature;
-            titulo.style.cssText = "font-weight:600;font-size:0.95rem;margin-bottom:0.2rem;";
+            titulo.style.cssText = "font-weight:600;font-size:0.9rem;margin-bottom:0.15rem;";
 
             var desc = document.createElement("div");
-            desc.textContent = "Impacto: " + (impacto > 0 ? "+" : "") + impacto.toFixed(4) + " (" + direcao + " o risco)";
-            desc.style.cssText = "font-size:0.85rem;color:var(--text-muted);";
+            desc.textContent = seta + " (impacto SHAP: " + (impacto > 0 ? "+" : "") + impacto.toFixed(4) + ")";
+            desc.style.cssText = "font-size:0.8rem;color:" + iconColor + ";font-weight:500;";
 
             textDiv.appendChild(titulo);
             textDiv.appendChild(desc);
@@ -148,7 +181,7 @@ function preencherDados(c, scoreData) {
         });
     } else {
         var empty = document.createElement("div");
-        empty.textContent = "Execute o treinamento do modelo (python -m src.ml.treinar) para ver os fatores de risco.";
+        empty.textContent = "Execute o treinamento do modelo (treinar_modelo.bat) para ver os fatores SHAP.";
         empty.style.cssText = "color:var(--text-muted);font-size:0.9rem;padding:0.5rem 0;";
         listaAnomalias.appendChild(empty);
     }

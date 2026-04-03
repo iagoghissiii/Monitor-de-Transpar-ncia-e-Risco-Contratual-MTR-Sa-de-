@@ -90,12 +90,16 @@ def score_contrato(contrato) -> dict:
         0.0, 1.0,
     ))
 
-    nivel      = _nivel_risco(score)
-    classe_idx = {"baixo": 0, "medio": 1, "alto": 2}[nivel]
+    nivel = _nivel_risco(score)
 
-    # SHAP — valores para a classe prevista
-    shap_vals    = _explainer.shap_values(X)          # list[n_classes] de arrays
-    importances  = shap_vals[classe_idx][0]            # array (n_features,)
+    # XGBoost: tipo de anomalia (normal / falha_preenchimento / fraude_intencional)
+    y_pred      = int(_xgb_model.predict(X)[0])
+    _LABEL_NOME = {0: "normal", 1: "falha_preenchimento", 2: "fraude_intencional"}
+    tipo        = _LABEL_NOME.get(y_pred, "normal")
+
+    # SHAP — valores para a classe XGBoost prevista
+    shap_vals   = _explainer.shap_values(X)
+    importances = shap_vals[y_pred][0]
 
     fatores = [
         {
@@ -111,5 +115,6 @@ def score_contrato(contrato) -> dict:
     return {
         "score_anomalia": score,
         "nivel_risco":    nivel,
+        "tipo_anomalia":  tipo,
         "fatores":        fatores[:5],
     }
