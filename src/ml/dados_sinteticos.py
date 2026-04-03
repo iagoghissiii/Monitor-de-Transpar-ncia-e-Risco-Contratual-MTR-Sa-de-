@@ -172,6 +172,97 @@ CATALOGO_TCU_MPF = [
         "n_amostras": 50,
     },
 
+    {
+        "id":         "FI-07",
+        "classe":     2,
+        "tipo":       "fraude_intencional",
+        "fonte":      "TCU",
+        "referencia": "Acordao 1.628/2015 — Plenario",
+        "titulo":     "Aditivos contratuais excessivos",
+        "descricao": (
+            "Contrato original de R$800.000 foi ampliado via 9 termos aditivos "
+            "sucessivos ate atingir R$4,2 milhoes — crescimento de 425% sobre o "
+            "valor original. Cada aditivo ficou individualmente abaixo do limite "
+            "de 25% permitido pela Lei 8.666, mas o acumulado violou o teto legal. "
+            "Gestor condenado a ressarcimento de R$2,1 milhoes."
+        ),
+        "sinais_no_dado": [
+            "Valor muito alto (log_valor > 14) com duracao muito longa",
+            "Modalidade dispensa ou contrato (enc=1 ou 12)",
+            "Zero ou poucos concorrentes",
+            "Valor redondo (cada aditivo e valor exato)",
+            "dispensa_alto_valor = 1",
+        ],
+        "n_amostras": 55,
+    },
+    {
+        "id":         "FI-08",
+        "classe":     2,
+        "tipo":       "fraude_intencional",
+        "fonte":      "TCU",
+        "referencia": "Acordao 1.982/2018 — Plenario",
+        "titulo":     "Dispensa emergencial repetida para o mesmo fornecedor",
+        "descricao": (
+            "O mesmo fornecedor recebeu 31 contratos por 'dispensa de emergencia' "
+            "no mesmo orgao ao longo de 4 anos, totalizando R$7,8 milhoes. "
+            "A emergencia foi usada como pretexto reiterado para evitar licitacao. "
+            "TCU determinou que situacao de emergencia autoprovocada nao justifica "
+            "dispensa. Tres gestores tiveram contas julgadas irregulares."
+        ),
+        "sinais_no_dado": [
+            "Dispensa (enc=1) com duracao muito curta (30-60 dias) — 'emergencia'",
+            "Zero concorrentes",
+            "Valor medio-alto: log_valor entre 11 e 13 (R$60k-R$440k)",
+            "Valor redondo (valores tabelados por emergencia)",
+            "Contrato_curto = 1 (curta duracao proposital)",
+        ],
+        "n_amostras": 55,
+    },
+    {
+        "id":         "FI-09",
+        "classe":     2,
+        "tipo":       "fraude_intencional",
+        "fonte":      "CGU",
+        "referencia": "Relatorio de Auditoria 00190.101498/2021 — Hospitais",
+        "titulo":     "Superfaturamento de servicos hospitalares em pregao",
+        "descricao": (
+            "Consorcio de hospitais privados apresentou propostas combinadas "
+            "em pregoes para internacoes e cirurgias pelo SUS. Apesar de ter "
+            "2 ou 3 participantes (aparencia de competicao), os valores foram "
+            "133% acima da tabela SIGTAP do Ministerio da Saude. O esquema "
+            "funcionou em 8 estados. Prejuizo estimado em R$340 milhoes."
+        ),
+        "sinais_no_dado": [
+            "Pregao (enc=3) com 2-3 concorrentes (aparencia de competicao)",
+            "Valor absurdamente alto para a duracao: log_valor_por_dia muito alto",
+            "Valor redondo (preco tabelado artificialmente acima do SIGTAP)",
+            "log_valor entre 13 e 15",
+        ],
+        "n_amostras": 55,
+    },
+    {
+        "id":         "FI-10",
+        "classe":     2,
+        "tipo":       "fraude_intencional",
+        "fonte":      "MPF",
+        "referencia": "Operacao Lava Saude (2022) — Ministerio da Saude",
+        "titulo":     "Rede de consultorias por inexigibilidade sem entrega",
+        "descricao": (
+            "Rede de 14 empresas de consultoria recebia contratos por inexigibilidade "
+            "de licitacao com justificativas tecnicas identicas copiadas entre si. "
+            "Nenhuma das empresas tinha corpo tecnico ou sede fisica comprovada. "
+            "Os contratos eram renovados automaticamente por 2-3 anos. "
+            "Operacao resultou em 22 denunciados e bloqueio de R$180 milhoes."
+        ),
+        "sinais_no_dado": [
+            "Inexigibilidade (enc=2) — justificativa tecnica usada como brecha",
+            "Duracao longa com renovacoes: 730-1825 dias",
+            "Zero concorrentes",
+            "Valor alto: log_valor entre 13 e 15",
+            "dispensa_alto_valor = 1, sem_concorrente_alto = 1",
+        ],
+        "n_amostras": 55,
+    },
     # ────────────────────────────────────────────────────────────────────────
     # FALHAS DE PREENCHIMENTO (classe 1)
     # ────────────────────────────────────────────────────────────────────────
@@ -284,6 +375,50 @@ CATALOGO_TCU_MPF = [
             "Sem nenhuma outra flag de fraude",
         ],
         "n_amostras": 55,
+    },
+    {
+        "id":         "FP-06",
+        "classe":     1,
+        "tipo":       "falha_preenchimento",
+        "fonte":      "CGU",
+        "referencia": "Nota Tecnica CGU 05/2023 — Inconsistencias PNCP",
+        "titulo":     "Numero de licitantes incompativel com a modalidade",
+        "descricao": (
+            "Contratos por dispensa de licitacao registrados com 10 a 30 "
+            "licitantes — o que e impossivel, ja que dispensa e inexigibilidade "
+            "por definicao legal nao admitem competicao. Erro causado por campo "
+            "de 'numero de participantes do pregao anterior' ser copiado "
+            "automaticamente para o contrato seguinte pelo sistema PNCP em 2023. "
+            "Afetou cerca de 3.200 contratos. Corrigido em novembro de 2023."
+        ),
+        "sinais_no_dado": [
+            "Modalidade dispensa (enc=1) com qtd_concorrentes alto (10-30) — impossivel",
+            "Valores e datas normais",
+            "Nenhuma flag de fraude ativa",
+        ],
+        "n_amostras": 50,
+    },
+    {
+        "id":         "FP-07",
+        "classe":     1,
+        "tipo":       "falha_preenchimento",
+        "fonte":      "TCU",
+        "referencia": "Acordao 743/2021 — Qualidade cadastral SIAFI",
+        "titulo":     "Data de inicio registrada no passado remoto",
+        "descricao": (
+            "Contratos com data de inicio registrada em anos como 2001, 2005 "
+            "ou 2010 por erro de migracao de dados do SIAFI legado para o SIAFI "
+            "Moderno entre 2019 e 2021. O contrato real foi assinado em 2020-2021, "
+            "mas o campo de data de inicio veio com o valor do contrato anterior "
+            "na base historica. Auditoria identificou 1.847 contratos afetados."
+        ),
+        "sinais_no_dado": [
+            "mes_inicio e dia_semana_inicio podem ser qualquer valor",
+            "Duracao muito longa (mais de 3650 dias — erro de data de inicio)",
+            "contrato_longo = 1",
+            "Valor e modalidade normais — so a data esta errada",
+        ],
+        "n_amostras": 50,
     },
 ]
 
@@ -590,6 +725,162 @@ def _gerar_fp05(n: int) -> pd.DataFrame:
     })
 
 
+def _gerar_fi07(n: int) -> pd.DataFrame:
+    """FI-07: Aditivos excessivos — valor cresce muito, duracao longa."""
+    log_v = _linspace(14.0, 15.5, n)                   # R$1.2M – R$5.4M
+    dur   = _linspace(730, 1825, n)                    # 2-5 anos com aditivos
+    vpd   = np.log1p(np.exp(log_v) / np.maximum(dur, 1))
+    return pd.DataFrame({
+        "log_valor":           log_v,
+        "duracao_dias":        dur,
+        "qtd_concorrentes":    _rng.integers(0, 2, n).astype(float),
+        "mes_inicio":          _rng.integers(1, 13, n).astype(float),
+        "dia_semana_inicio":   _rng.integers(0, 5, n).astype(float),
+        "fonte_enc":           _rng.integers(0, 2, n).astype(float),
+        "tipo_fornecedor_enc": np.zeros(n),
+        "modalidade_enc":      np.ones(n),                              # dispensa
+        "log_valor_por_dia":   vpd,
+        "contrato_curto":      np.zeros(n),
+        "contrato_longo":      (dur > 1825).astype(float),
+        "valor_redondo":       np.ones(n),
+        "sem_concorrente_alto": np.ones(n),
+        "dispensa_alto_valor": np.ones(n),
+        "classe":              np.full(n, 2),
+        "tipo_anomalia":       ["fraude_intencional"] * n,
+        "caso_ref":            ["FI-07"] * n,
+    })
+
+
+def _gerar_fi08(n: int) -> pd.DataFrame:
+    """FI-08: Dispensa emergencial repetida — curta + 0 conc + valor medio."""
+    log_v = _linspace(11.0, 13.0, n)                   # R$60k – R$440k
+    dur   = _linspace(30, 60, n)                       # curta: "emergencia"
+    vpd   = np.log1p(np.exp(log_v) / np.maximum(dur, 1))
+    return pd.DataFrame({
+        "log_valor":           log_v,
+        "duracao_dias":        dur,
+        "qtd_concorrentes":    np.zeros(n),
+        "mes_inicio":          _rng.integers(1, 13, n).astype(float),
+        "dia_semana_inicio":   _rng.integers(0, 5, n).astype(float),
+        "fonte_enc":           _rng.integers(0, 2, n).astype(float),
+        "tipo_fornecedor_enc": np.zeros(n),
+        "modalidade_enc":      np.ones(n),                              # dispensa
+        "log_valor_por_dia":   vpd,
+        "contrato_curto":      np.ones(n),                             # curto
+        "contrato_longo":      np.zeros(n),
+        "valor_redondo":       np.ones(n),
+        "sem_concorrente_alto": (np.exp(log_v) > 100_000).astype(float),
+        "dispensa_alto_valor": (np.exp(log_v) > 50_000).astype(float),
+        "classe":              np.full(n, 2),
+        "tipo_anomalia":       ["fraude_intencional"] * n,
+        "caso_ref":            ["FI-08"] * n,
+    })
+
+
+def _gerar_fi09(n: int) -> pd.DataFrame:
+    """FI-09: Superfaturamento hospitalar — pregao + 2-3 conc + valor absurdo/dia."""
+    log_v = _linspace(13.0, 15.0, n)                   # R$440k – R$3.3M
+    dur   = _linspace(30, 180, n)                      # curto — servicos pontuais
+    vpd   = np.log1p(np.exp(log_v) / np.maximum(dur, 1))
+    return pd.DataFrame({
+        "log_valor":           log_v,
+        "duracao_dias":        dur,
+        "qtd_concorrentes":    _linspace(2, 3, n),     # 2-3 conc (aparencia de competicao)
+        "mes_inicio":          _rng.integers(1, 13, n).astype(float),
+        "dia_semana_inicio":   _rng.integers(0, 5, n).astype(float),
+        "fonte_enc":           _rng.integers(0, 2, n).astype(float),
+        "tipo_fornecedor_enc": np.zeros(n),
+        "modalidade_enc":      np.full(n, 3.0),                        # pregao
+        "log_valor_por_dia":   vpd,
+        "contrato_curto":      (dur < 30).astype(float),
+        "contrato_longo":      np.zeros(n),
+        "valor_redondo":       np.ones(n),
+        "sem_concorrente_alto": np.zeros(n),                           # tem conc
+        "dispensa_alto_valor": np.zeros(n),                            # e pregao
+        "classe":              np.full(n, 2),
+        "tipo_anomalia":       ["fraude_intencional"] * n,
+        "caso_ref":            ["FI-09"] * n,
+    })
+
+
+def _gerar_fi10(n: int) -> pd.DataFrame:
+    """FI-10: Lava Saude — rede de consultorias por inexigibilidade."""
+    log_v = _linspace(13.0, 15.0, n)                   # R$440k – R$3.3M
+    dur   = _linspace(730, 1825, n)                    # 2-5 anos com renovacoes
+    vpd   = np.log1p(np.exp(log_v) / np.maximum(dur, 1))
+    return pd.DataFrame({
+        "log_valor":           log_v,
+        "duracao_dias":        dur,
+        "qtd_concorrentes":    np.zeros(n),
+        "mes_inicio":          _rng.integers(1, 13, n).astype(float),
+        "dia_semana_inicio":   _rng.integers(0, 5, n).astype(float),
+        "fonte_enc":           _rng.integers(0, 2, n).astype(float),
+        "tipo_fornecedor_enc": np.zeros(n),                            # PJ (diferente FI-06)
+        "modalidade_enc":      np.full(n, 2.0),                        # inexigibilidade
+        "log_valor_por_dia":   vpd,
+        "contrato_curto":      np.zeros(n),
+        "contrato_longo":      (dur > 1825).astype(float),
+        "valor_redondo":       np.ones(n),
+        "sem_concorrente_alto": np.ones(n),
+        "dispensa_alto_valor": np.ones(n),
+        "classe":              np.full(n, 2),
+        "tipo_anomalia":       ["fraude_intencional"] * n,
+        "caso_ref":            ["FI-10"] * n,
+    })
+
+
+def _gerar_fp06(n: int) -> pd.DataFrame:
+    """FP-06: Numero de licitantes impossivel para dispensa (bug PNCP 2023)."""
+    log_v = _linspace(9.0, 13.0, n)
+    dur   = _linspace(90, 730, n)
+    vpd   = np.log1p(np.exp(log_v) / np.maximum(dur, 1))
+    return pd.DataFrame({
+        "log_valor":           log_v,
+        "duracao_dias":        dur,
+        "qtd_concorrentes":    _linspace(10, 30, n),   # impossivel para dispensa
+        "mes_inicio":          _rng.integers(1, 13, n).astype(float),
+        "dia_semana_inicio":   _rng.integers(0, 5, n).astype(float),
+        "fonte_enc":           np.zeros(n),             # PNCP — onde o bug ocorreu
+        "tipo_fornecedor_enc": np.zeros(n),
+        "modalidade_enc":      np.ones(n),              # dispensa
+        "log_valor_por_dia":   vpd,
+        "contrato_curto":      (dur < 30).astype(float),
+        "contrato_longo":      (dur > 1825).astype(float),
+        "valor_redondo":       _rng.integers(0, 2, n).astype(float),
+        "sem_concorrente_alto": np.zeros(n),
+        "dispensa_alto_valor": (np.exp(log_v) > 50_000).astype(float),
+        "classe":              np.full(n, 1),
+        "tipo_anomalia":       ["falha_preenchimento"] * n,
+        "caso_ref":            ["FP-06"] * n,
+    })
+
+
+def _gerar_fp07(n: int) -> pd.DataFrame:
+    """FP-07: Data de inicio no passado remoto (migracao SIAFI 2019-2021)."""
+    log_v = _linspace(9.0, 13.0, n)
+    dur   = _linspace(3650, 7300, n)                   # 10-20 anos (data inicio errada)
+    vpd   = np.log1p(np.exp(log_v) / np.maximum(dur, 1))
+    return pd.DataFrame({
+        "log_valor":           log_v,
+        "duracao_dias":        dur,
+        "qtd_concorrentes":    _rng.integers(1, 8, n).astype(float),
+        "mes_inicio":          _rng.integers(1, 13, n).astype(float),
+        "dia_semana_inicio":   _rng.integers(0, 5, n).astype(float),
+        "fonte_enc":           np.ones(n),              # Portal/COMPRASNET legado
+        "tipo_fornecedor_enc": np.zeros(n),
+        "modalidade_enc":      _rng.integers(1, 7, n).astype(float),
+        "log_valor_por_dia":   vpd,
+        "contrato_curto":      np.zeros(n),
+        "contrato_longo":      np.ones(n),
+        "valor_redondo":       _rng.integers(0, 2, n).astype(float),
+        "sem_concorrente_alto": np.zeros(n),
+        "dispensa_alto_valor": np.zeros(n),
+        "classe":              np.full(n, 1),
+        "tipo_anomalia":       ["falha_preenchimento"] * n,
+        "caso_ref":            ["FP-07"] * n,
+    })
+
+
 # ── Gerador de contratos normais ─────────────────────────────────────────────
 
 def _gerar_normais(n: int) -> pd.DataFrame:
@@ -634,21 +925,205 @@ _GERADORES = {
     "FI-04": _gerar_fi04,
     "FI-05": _gerar_fi05,
     "FI-06": _gerar_fi06,
+    "FI-07": _gerar_fi07,
+    "FI-08": _gerar_fi08,
+    "FI-09": _gerar_fi09,
+    "FI-10": _gerar_fi10,
     "FP-01": _gerar_fp01,
     "FP-02": _gerar_fp02,
     "FP-03": _gerar_fp03,
     "FP-04": _gerar_fp04,
     "FP-05": _gerar_fp05,
+    "FP-06": _gerar_fp06,
+    "FP-07": _gerar_fp07,
 }
 
 
-def gerar_dataset(n_normais: int = 300) -> pd.DataFrame:
+# ════════════════════════════════════════════════════════════════════════════
+# RUIDO E CASOS BORDERLINE
+# Tornam o modelo mais robusto a variações do mundo real
+# ════════════════════════════════════════════════════════════════════════════
+
+_CONTINUAS_COM_RUIDO = [
+    "log_valor", "duracao_dias", "qtd_concorrentes",
+    "log_valor_por_dia", "mes_inicio",
+]
+
+
+def _adicionar_ruido(df: pd.DataFrame, sigma_rel: float = 0.07) -> pd.DataFrame:
+    """
+    Injeta ruido gaussiano relativo nas features continuas.
+    sigma_rel=0.07 => perturbacao de +/-7% do desvio padrao de cada coluna.
+    Simula imprecisoes de registro e variações naturais dos dados reais.
+    """
+    rng_ruido = np.random.default_rng(99)
+    df = df.copy()
+    for col in _CONTINUAS_COM_RUIDO:
+        if col not in df.columns:
+            continue
+        std = df[col].std()
+        if std < 1e-6:
+            continue
+        ruido = rng_ruido.normal(0, sigma_rel * std, len(df))
+        df[col] = df[col] + ruido
+    # Garante limites validos
+    df["log_valor"]          = df["log_valor"].clip(0.0, 20.0)
+    df["duracao_dias"]       = df["duracao_dias"].clip(1.0, 5000.0)
+    df["qtd_concorrentes"]   = df["qtd_concorrentes"].clip(0.0, 100.0)
+    df["log_valor_por_dia"]  = df["log_valor_por_dia"].clip(0.0, 20.0)
+    df["mes_inicio"]         = df["mes_inicio"].clip(1.0, 12.0)
+    return df
+
+
+def _gerar_borderline_fp05_vs_fi(n: int) -> pd.DataFrame:
+    """
+    BORDERLINE — FP-05 vs Fraude (0 concorrentes em pregao).
+
+    O modelo DEVE aprender que o sinal decisivo e a COMBINACAO:
+      - FP-05 real: pregao + valor normal + fonte COMPRASNET (fonte_enc=1)
+      - Fraude real: dispensa/inexig + valor alto + sem_concorrente_alto=1
+
+    Aqui criamos casos intermediarios: pregao + 0 conc + valor medio-alto.
+    Resposta correta: falha_preenchimento (o bug era em pregoes, nao em dispensas).
+    """
+    log_v = _linspace(10.5, 13.0, n)      # R$36k – R$440k (valor elevado mas em pregao)
+    dur   = _linspace(90, 365, n)
+    vpd   = np.log1p(np.exp(log_v) / np.maximum(dur, 1))
+    return pd.DataFrame({
+        "log_valor":           log_v,
+        "duracao_dias":        dur,
+        "qtd_concorrentes":    np.zeros(n),        # 0 — mas e pregao (bug)
+        "mes_inicio":          _rng.integers(1, 13, n).astype(float),
+        "dia_semana_inicio":   _rng.integers(0, 5, n).astype(float),
+        "fonte_enc":           np.ones(n),          # COMPRASNET — onde o bug ocorreu
+        "tipo_fornecedor_enc": np.zeros(n),
+        "modalidade_enc":      _rng.choice([3.0, 4.0], n),  # pregao
+        "log_valor_por_dia":   vpd,
+        "contrato_curto":      np.zeros(n),
+        "contrato_longo":      np.zeros(n),
+        "valor_redondo":       _rng.integers(0, 2, n).astype(float),
+        "sem_concorrente_alto": (np.exp(log_v) > 100_000).astype(float),
+        "dispensa_alto_valor": np.zeros(n),         # nao e dispensa
+        "classe":              np.full(n, 1),       # falha_preenchimento
+        "tipo_anomalia":       ["falha_preenchimento"] * n,
+        "caso_ref":            ["BL-FP05vFI"] * n,
+    })
+
+
+def _gerar_borderline_fp03_vs_fi06(n: int) -> pd.DataFrame:
+    """
+    BORDERLINE — FP-03 (ano errado) vs FI-06 (consultora PF longa).
+
+    Ambos tem duracao muito longa. O sinal decisivo:
+      - FP-03: valor NORMAL para o objeto, modalidade qualquer, PJ
+      - FI-06: PF + inexigibilidade + valor muito alto
+
+    Aqui criamos FP-03 com valor medio-alto (mais dificil de separar).
+    Resposta correta: falha_preenchimento.
+    """
+    log_v = _linspace(11.0, 13.5, n)      # R$60k – R$730k (valor elevado por erro)
+    dur   = _linspace(2500, 3650, n)       # 6-10 anos (erro de digitacao)
+    vpd   = np.log1p(np.exp(log_v) / np.maximum(dur, 1))
+    return pd.DataFrame({
+        "log_valor":           log_v,
+        "duracao_dias":        dur,
+        "qtd_concorrentes":    _rng.integers(1, 5, n).astype(float),  # tem concorrentes
+        "mes_inicio":          _rng.integers(1, 13, n).astype(float),
+        "dia_semana_inicio":   _rng.integers(0, 5, n).astype(float),
+        "fonte_enc":           _rng.integers(0, 2, n).astype(float),
+        "tipo_fornecedor_enc": np.zeros(n),            # PJ — diferenca chave vs FI-06
+        "modalidade_enc":      _rng.choice([3.0, 4.0, 5.0], n),  # pregao/concorrencia
+        "log_valor_por_dia":   vpd,
+        "contrato_curto":      np.zeros(n),
+        "contrato_longo":      np.ones(n),
+        "valor_redondo":       _rng.integers(0, 2, n).astype(float),
+        "sem_concorrente_alto": np.zeros(n),
+        "dispensa_alto_valor": np.zeros(n),
+        "classe":              np.full(n, 1),
+        "tipo_anomalia":       ["falha_preenchimento"] * n,
+        "caso_ref":            ["BL-FP03vFI06"] * n,
+    })
+
+
+def _gerar_borderline_fi02_vs_normal(n: int) -> pd.DataFrame:
+    """
+    BORDERLINE — FI-02 (fracionamento) vs Normal.
+
+    Fracionamento sutil: valor proximo a R$50k mas com 1 concorrente
+    (o gestor colocou 1 concorrente para parecer mais legitimo).
+    O sinal decisivo: dispensa + valor redondo proximo ao limite.
+    Resposta correta: fraude_intencional.
+    """
+    valores = _linspace(35_000, 49_000, n)
+    log_v   = np.log1p(valores)
+    dur     = _linspace(90, 365, n)
+    vpd     = np.log1p(valores / np.maximum(dur, 1))
+    return pd.DataFrame({
+        "log_valor":           log_v,
+        "duracao_dias":        dur,
+        "qtd_concorrentes":    np.ones(n),          # 1 concorrente para camuflar
+        "mes_inicio":          _rng.integers(1, 13, n).astype(float),
+        "dia_semana_inicio":   _rng.integers(0, 5, n).astype(float),
+        "fonte_enc":           _rng.integers(0, 2, n).astype(float),
+        "tipo_fornecedor_enc": np.zeros(n),
+        "modalidade_enc":      np.ones(n),           # dispensa
+        "log_valor_por_dia":   vpd,
+        "contrato_curto":      np.zeros(n),
+        "contrato_longo":      np.zeros(n),
+        "valor_redondo":       np.ones(n),           # valor redondo — sinal chave
+        "sem_concorrente_alto": np.zeros(n),
+        "dispensa_alto_valor": np.zeros(n),
+        "classe":              np.full(n, 2),
+        "tipo_anomalia":       ["fraude_intencional"] * n,
+        "caso_ref":            ["BL-FI02vN"] * n,
+    })
+
+
+def _gerar_borderline_fi04_vs_fp02(n: int) -> pd.DataFrame:
+    """
+    BORDERLINE — FI-04 (empresa fantasma) vs FP-02 (valor zerado).
+
+    Empresa fantasma com valor MEDIO (nao altissimo) — menos obvio.
+    O sinal decisivo: inexigibilidade + 0 conc (mesmo com valor medio).
+    FP-02 tem valor MUITO baixo (<R$148). Aqui valor e R$1k-20k — ambiguo.
+    Resposta correta: fraude_intencional.
+    """
+    valores = _linspace(1_000, 20_000, n)
+    log_v   = np.log1p(valores)
+    dur     = _linspace(180, 730, n)
+    vpd     = np.log1p(valores / np.maximum(dur, 1))
+    return pd.DataFrame({
+        "log_valor":           log_v,
+        "duracao_dias":        dur,
+        "qtd_concorrentes":    np.zeros(n),
+        "mes_inicio":          _rng.integers(1, 13, n).astype(float),
+        "dia_semana_inicio":   _rng.integers(0, 5, n).astype(float),
+        "fonte_enc":           _rng.integers(0, 2, n).astype(float),
+        "tipo_fornecedor_enc": np.zeros(n),
+        "modalidade_enc":      np.full(n, 2.0),     # inexigibilidade — sinal chave
+        "log_valor_por_dia":   vpd,
+        "contrato_curto":      np.zeros(n),
+        "contrato_longo":      np.zeros(n),
+        "valor_redondo":       np.ones(n),
+        "sem_concorrente_alto": np.zeros(n),        # valor < 100k
+        "dispensa_alto_valor": np.zeros(n),         # valor < 50k
+        "classe":              np.full(n, 2),
+        "tipo_anomalia":       ["fraude_intencional"] * n,
+        "caso_ref":            ["BL-FI04vFP02"] * n,
+    })
+
+
+def gerar_dataset(n_normais: int = 300, com_ruido: bool = True,
+                  com_borderline: bool = True) -> pd.DataFrame:
     """
     Gera o dataset sintetico completo para treinamento supervisionado.
 
-    Retorna DataFrame com FEATURE_COLS + ['valor_redondo',
-    'sem_concorrente_alto', 'dispensa_alto_valor',
-    'classe', 'tipo_anomalia', 'caso_ref'].
+    Parametros:
+        n_normais     : quantidade de contratos normais sinteticos
+        com_ruido     : se True, injeta ruido gaussiano nas features continuas
+        com_borderline: se True, adiciona casos ambiguos entre classes
+
+    Retorna DataFrame com FEATURE_COLS + metadados de treino.
     """
     partes = [_gerar_normais(n_normais)]
 
@@ -656,8 +1131,24 @@ def gerar_dataset(n_normais: int = 300) -> pd.DataFrame:
         gerador = _GERADORES[caso["id"]]
         partes.append(gerador(caso["n_amostras"]))
 
+    if com_borderline:
+        partes += [
+            _gerar_borderline_fp05_vs_fi(40),
+            _gerar_borderline_fp03_vs_fi06(40),
+            _gerar_borderline_fi02_vs_normal(40),
+            _gerar_borderline_fi04_vs_fp02(40),
+        ]
+
     df = pd.concat(partes, ignore_index=True)
     df[FEATURE_COLS] = df[FEATURE_COLS].fillna(0.0).astype(float)
+
+    if com_ruido:
+        df = _adicionar_ruido(df, sigma_rel=0.07)
+        # Recalcula flags binarias apos ruido (devem continuar 0/1)
+        for col in ["contrato_curto", "contrato_longo", "valor_redondo",
+                    "sem_concorrente_alto", "dispensa_alto_valor"]:
+            df[col] = df[col].round().clip(0, 1)
+
     return df
 
 
