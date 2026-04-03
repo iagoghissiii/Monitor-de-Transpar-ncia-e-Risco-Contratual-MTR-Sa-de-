@@ -657,11 +657,7 @@ def gerar_dataset(n_normais: int = 300) -> pd.DataFrame:
         partes.append(gerador(caso["n_amostras"]))
 
     df = pd.concat(partes, ignore_index=True)
-    df[FEATURE_COLS + ["valor_redondo", "sem_concorrente_alto", "dispensa_alto_valor"]] = (
-        df[FEATURE_COLS + ["valor_redondo", "sem_concorrente_alto", "dispensa_alto_valor"]]
-        .fillna(0.0)
-        .astype(float)
-    )
+    df[FEATURE_COLS] = df[FEATURE_COLS].fillna(0.0).astype(float)
     return df
 
 
