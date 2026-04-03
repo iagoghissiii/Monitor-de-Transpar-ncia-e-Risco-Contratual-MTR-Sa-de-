@@ -25,11 +25,12 @@ async function apiRequest(endpoint, options = {}) {
 
 async function fetchContratos(filtros = {}) {
     const params = new URLSearchParams();
-    if (filtros.valorMin) params.append("valor_min", filtros.valorMin);
-    if (filtros.valorMax) params.append("valor_max", filtros.valorMax);
-    if (filtros.ordem) params.append("ordem", filtros.ordem);
-    if (filtros.pagina) params.append("pagina", filtros.pagina);
-    if (filtros.limite) params.append("limite", filtros.limite);
+    if (filtros.valorMin)   params.append("valor_min",   filtros.valorMin);
+    if (filtros.valorMax)   params.append("valor_max",   filtros.valorMax);
+    if (filtros.nivelRisco) params.append("nivel_risco", filtros.nivelRisco);
+    if (filtros.ordem)      params.append("ordem",       filtros.ordem);
+    if (filtros.pagina)     params.append("pagina",      filtros.pagina);
+    if (filtros.limite)     params.append("limite",      filtros.limite);
 
     return apiRequest(`/contratos?${params}`);
 }

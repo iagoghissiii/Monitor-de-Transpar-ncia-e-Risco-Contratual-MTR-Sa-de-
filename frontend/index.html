@@ -57,6 +57,12 @@
             <div class="filtros-container">
                 <input type="number" id="filtro-valor-min" placeholder="Valor minimo (R$)">
                 <input type="number" id="filtro-valor-max" placeholder="Valor maximo (R$)">
+                <select id="filtro-risco">
+                    <option value="">Todos os niveis</option>
+                    <option value="alto">🔴 Alto Risco</option>
+                    <option value="medio">🟡 Medio Risco</option>
+                    <option value="baixo">🟢 Baixo Risco</option>
+                </select>
                 <select id="filtro-ordem">
                     <option value="desc">Mais recente primeiro</option>
                     <option value="asc">Mais antigo primeiro</option>
@@ -82,6 +88,8 @@
                             <th>Valor (R$)</th>
                             <th>Inicio</th>
                             <th>Fim</th>
+                            <th>Risco</th>
+                            <th>Score</th>
                             <th>Acoes</th>
                         </tr>
                     </thead>

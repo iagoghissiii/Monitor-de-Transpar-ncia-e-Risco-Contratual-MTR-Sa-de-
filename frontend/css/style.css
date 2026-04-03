@@ -336,9 +336,9 @@ main {
 
 .card.card-white { border-color: rgba(255, 255, 255, 0.5); }
 .card.card-accent { border-color: rgba(0, 122, 255, 0.3); }
-.card.card-danger { border-color: rgba(255, 59, 48, 0.3); background: rgba(255, 59, 48, 0.06); }
-.card.card-warning { border-color: rgba(255, 149, 0, 0.3); background: rgba(255, 149, 0, 0.06); }
-.card.card-success { border-color: rgba(52, 199, 89, 0.3); background: rgba(52, 199, 89, 0.06); }
+.card.card-danger { border-color: rgba(255, 59, 48, 0.3); background: rgba(255, 59, 48, 0.06); cursor: pointer; }
+.card.card-warning { border-color: rgba(255, 149, 0, 0.3); background: rgba(255, 149, 0, 0.06); cursor: pointer; }
+.card.card-success { border-color: rgba(52, 199, 89, 0.3); background: rgba(52, 199, 89, 0.06); cursor: pointer; }
 
 .valor-total-text {
     font-size: 1.1rem !important;
@@ -383,13 +383,60 @@ td {
     color: var(--text-secondary);
 }
 
-/* Impedir que colunas de dados numéricos e datas quebrem de linha e afetem o layout do valor */
+/* Impedir que colunas de dados numéricos e datas quebrem de linha */
 th:nth-child(1), td:nth-child(1),
 th:nth-child(5), td:nth-child(5),
 th:nth-child(6), td:nth-child(6),
 th:nth-child(7), td:nth-child(7),
-th:nth-child(8), td:nth-child(8) {
+th:nth-child(8), td:nth-child(8),
+th:nth-child(9), td:nth-child(9),
+th:nth-child(10), td:nth-child(10) {
     white-space: nowrap;
+}
+
+/* ── Badges de Risco ─────────────────────────── */
+
+.badge-risco {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.badge-risco.alto {
+    background: rgba(255, 59, 48, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(255, 59, 48, 0.25);
+}
+
+.badge-risco.medio {
+    background: rgba(255, 149, 0, 0.12);
+    color: var(--warning);
+    border: 1px solid rgba(255, 149, 0, 0.25);
+}
+
+.badge-risco.baixo {
+    background: rgba(52, 199, 89, 0.12);
+    color: var(--success);
+    border: 1px solid rgba(52, 199, 89, 0.25);
+}
+
+.badge-risco.sem-score {
+    background: var(--bg-input);
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+}
+
+.score-cell {
+    font-size: 0.78rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
 }
 
 tr { transition: background-color var(--transition); }

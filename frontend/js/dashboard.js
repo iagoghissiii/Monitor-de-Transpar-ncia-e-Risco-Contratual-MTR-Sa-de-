@@ -22,16 +22,34 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     });
+
+    // Clique nos cards de risco aplica filtro automaticamente
+    document.getElementById("alto-risco")?.closest(".card")?.addEventListener("click", () => {
+        document.getElementById("filtro-risco").value = "alto";
+        paginaAtual = 1;
+        carregarContratos();
+    });
+    document.getElementById("medio-risco")?.closest(".card")?.addEventListener("click", () => {
+        document.getElementById("filtro-risco").value = "medio";
+        paginaAtual = 1;
+        carregarContratos();
+    });
+    document.getElementById("baixo-risco")?.closest(".card")?.addEventListener("click", () => {
+        document.getElementById("filtro-risco").value = "baixo";
+        paginaAtual = 1;
+        carregarContratos();
+    });
 });
 
 
 function getFiltros() {
     return {
-        valorMin: document.getElementById("filtro-valor-min").value,
-        valorMax: document.getElementById("filtro-valor-max").value,
-        ordem: document.getElementById("filtro-ordem").value,
-        pagina: paginaAtual,
-        limite: LIMITE,
+        valorMin:    document.getElementById("filtro-valor-min").value,
+        valorMax:    document.getElementById("filtro-valor-max").value,
+        nivelRisco:  document.getElementById("filtro-risco").value,
+        ordem:       document.getElementById("filtro-ordem").value,
+        pagina:      paginaAtual,
+        limite:      LIMITE,
     };
 }
 
@@ -116,10 +134,28 @@ function renderizarTabela(contratos) {
     contratos.forEach((c) => {
         const tr = document.createElement("tr");
 
-        const orgaoNome = c.orgao ? (c.orgao.sigla || c.orgao.nome) : "-";
+        const orgaoNome    = c.orgao     ? (c.orgao.sigla || c.orgao.nome) : "-";
         const fornecedorNome = c.fornecedor ? c.fornecedor.nome : "-";
-        const objeto = c.objeto ? (c.objeto.length > 50 ? c.objeto.substring(0, 50) + "..." : c.objeto) : "-";
-        const valor = formatarValor(c.valor);
+        const objeto       = c.objeto ? (c.objeto.length > 50 ? c.objeto.substring(0, 50) + "..." : c.objeto) : "-";
+        const valor        = formatarValor(c.valor);
+
+        // Badge de risco
+        const nivel = c.nivel_risco || null;
+        let badgeHtml;
+        if (!nivel) {
+            badgeHtml = `<span class="badge-risco sem-score">–</span>`;
+        } else if (nivel === "alto") {
+            badgeHtml = `<span class="badge-risco alto">● Alto</span>`;
+        } else if (nivel === "medio") {
+            badgeHtml = `<span class="badge-risco medio">● Medio</span>`;
+        } else {
+            badgeHtml = `<span class="badge-risco baixo">● Baixo</span>`;
+        }
+
+        // Score
+        const scoreHtml = c.score_anomalia != null
+            ? `<span class="score-cell">${c.score_anomalia.toFixed(4)}</span>`
+            : `<span class="score-cell" style="opacity:0.35">–</span>`;
 
         tr.innerHTML = `
             <td>${c.id}</td>
@@ -129,6 +165,8 @@ function renderizarTabela(contratos) {
             <td>R$ ${valor}</td>
             <td>${formatarData(c.data_inicio)}</td>
             <td>${formatarData(c.data_fim)}</td>
+            <td>${badgeHtml}</td>
+            <td>${scoreHtml}</td>
             <td>
                 <button class="btn btn-primary btn-small" onclick="verDetalhe(${c.id})">Ver</button>
             </td>
