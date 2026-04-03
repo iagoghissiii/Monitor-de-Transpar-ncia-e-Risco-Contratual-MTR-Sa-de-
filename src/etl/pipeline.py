@@ -34,7 +34,7 @@ ANO_FIM = 2026
 DELAY_ENTRE_ORGAOS = 1.5
 
 # Órgãos que SÓ existem no Portal da Transparência (ANVISA e ANS)
-ORGAOS_SOMENTE_PORTAL = {k: v for k, v in ORGAOS_SAUDE.items() if k in ("36212", "36213")}
+ORGAOS_SOMENTE_PORTAL = {k: v for k, v in ORGAOS_SAUDE.items() if k in ("36206", "36216")}
 
 
 def _janelas_anuais(anos: list[int]) -> list[tuple[date, date]]:
