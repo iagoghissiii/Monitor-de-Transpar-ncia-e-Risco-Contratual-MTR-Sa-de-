@@ -3,7 +3,7 @@
 from datetime import datetime, date
 from sqlalchemy import (
     create_engine, Column, Integer, String, Float, Text,
-    DateTime, Date, ForeignKey,
+    DateTime, Date, ForeignKey, text,
 )
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, relationship
 from src.utils.config import settings
@@ -69,8 +69,23 @@ class Contrato(Base):
 
 
 def create_tables() -> None:
-    """Cria todas as tabelas no banco de dados."""
+    """Cria todas as tabelas e aplica migracoes incrementais."""
     Base.metadata.create_all(bind=engine)
+    _migrar()
+
+
+def _migrar() -> None:
+    """Adiciona colunas novas em bancos existentes sem apagar dados."""
+    migracoes = [
+        "ALTER TABLE contratos ADD COLUMN id_externo VARCHAR(50)",
+    ]
+    with engine.connect() as conn:
+        for sql in migracoes:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+            except Exception:
+                pass  # coluna ja existe
 
 
 def get_db():
