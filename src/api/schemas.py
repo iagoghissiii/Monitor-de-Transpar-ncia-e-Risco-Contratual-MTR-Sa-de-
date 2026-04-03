@@ -1,4 +1,4 @@
-"""Schemas Pydantic para validacao de request/response da API (BETA)."""
+"""Schemas Pydantic para validacao de request/response da API."""
 
 from datetime import date
 from pydantic import BaseModel
@@ -36,8 +36,24 @@ class ContratoResponse(BaseModel):
     orgao: OrgaoResponse | None = None
     fornecedor: FornecedorResponse | None = None
     fonte: str | None = None
+    score_anomalia: float | None = None
+    nivel_risco: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class FatorRisco(BaseModel):
+    feature: str
+    label: str
+    valor: float
+    impacto: float
+
+
+class ScoreResponse(BaseModel):
+    contrato_id: int
+    score_anomalia: float
+    nivel_risco: str
+    fatores: list[FatorRisco]
 
 
 class ContratoListResponse(BaseModel):
@@ -52,3 +68,7 @@ class DashboardResumo(BaseModel):
     valor_total: float
     total_orgaos: int
     total_fornecedores: int
+    score_medio: float | None = None
+    alto_risco: int | None = None
+    medio_risco: int | None = None
+    baixo_risco: int | None = None

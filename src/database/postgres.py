@@ -67,6 +67,10 @@ class Contrato(Base):
     data_coleta = Column(DateTime, default=datetime.utcnow)
     fonte = Column(String(50))
 
+    # Score ML (preenchido apos src.ml.treinar)
+    score_anomalia = Column(Float, nullable=True)
+    nivel_risco    = Column(String(10), nullable=True)  # "baixo" | "medio" | "alto"
+
 
 def create_tables() -> None:
     """Cria todas as tabelas e aplica migracoes incrementais."""
@@ -78,6 +82,8 @@ def _migrar() -> None:
     """Adiciona colunas novas em bancos existentes sem apagar dados."""
     migracoes = [
         "ALTER TABLE contratos ADD COLUMN id_externo VARCHAR(50)",
+        "ALTER TABLE contratos ADD COLUMN score_anomalia REAL",
+        "ALTER TABLE contratos ADD COLUMN nivel_risco VARCHAR(10)",
     ]
     with engine.connect() as conn:
         for sql in migracoes:

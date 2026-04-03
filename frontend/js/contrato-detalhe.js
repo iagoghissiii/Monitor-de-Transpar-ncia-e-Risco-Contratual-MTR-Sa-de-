@@ -19,7 +19,15 @@ document.addEventListener("DOMContentLoaded", function () {
 async function carregarContrato(id) {
     try {
         var c = await fetchContratoDetalhe(id);
-        preencherDados(c);
+        // Busca score ML em paralelo
+        var scoreData = null;
+        try {
+            var respScore = await fetch(API_BASE + "/contratos/" + id + "/score");
+            if (respScore.ok) scoreData = await respScore.json();
+        } catch (e) {
+            console.warn("Score ML indisponivel:", e);
+        }
+        preencherDados(c, scoreData);
     } catch (error) {
         console.error("Erro ao carregar contrato:", error);
         document.getElementById("loading").classList.remove("visible");
@@ -54,7 +62,7 @@ function calcularDuracao(inicio, fim) {
 }
 
 
-function preencherDados(c) {
+function preencherDados(c, scoreData) {
     document.getElementById("loading").classList.remove("visible");
     document.getElementById("conteudo").style.display = "block";
 
@@ -72,13 +80,29 @@ function preencherDados(c) {
     var fim = formatarData(c.data_fim);
     document.getElementById("det-periodo").textContent = inicio + " a " + fim;
 
-    // Score de Anomalia
-    document.getElementById("score-anomalia").textContent = "0.0000";
+    // ── Score de Anomalia ─────────────────────────────────────────
+    var score     = (scoreData && scoreData.score_anomalia != null) ? scoreData.score_anomalia : (c.score_anomalia || 0);
+    var nivelBruto = (scoreData && scoreData.nivel_risco)           ? scoreData.nivel_risco    : (c.nivel_risco   || "baixo");
 
-    let riscoNivel = "BAIXO";
-    let riscoCor = "#28a745";
-    let riscoBg = "rgba(40, 167, 69, 0.2)";
-    let barraWidth = "25%";
+    document.getElementById("score-anomalia").textContent = score.toFixed(4);
+
+    var riscoNivel, riscoCor, riscoBg, barraWidth;
+    if (nivelBruto === "alto") {
+        riscoNivel = "ALTO";
+        riscoCor   = "#dc3545";
+        riscoBg    = "rgba(220, 53, 69, 0.2)";
+        barraWidth = Math.round(score * 100) + "%";
+    } else if (nivelBruto === "medio") {
+        riscoNivel = "MEDIO";
+        riscoCor   = "#ffc107";
+        riscoBg    = "rgba(255, 193, 7, 0.2)";
+        barraWidth = Math.round(score * 100) + "%";
+    } else {
+        riscoNivel = "BAIXO";
+        riscoCor   = "#28a745";
+        riscoBg    = "rgba(40, 167, 69, 0.2)";
+        barraWidth = Math.max(5, Math.round(score * 100)) + "%";
+    }
 
     document.getElementById("nivel-risco").textContent = riscoNivel;
     document.getElementById("nivel-risco").style.color = riscoCor;
@@ -86,71 +110,46 @@ function preencherDados(c) {
     document.getElementById("barra-risco").style.backgroundColor = riscoCor;
     document.getElementById("barra-risco").style.width = barraWidth;
 
-    // Sinalizacoes
+    // ── Fatores SHAP ──────────────────────────────────────────────
     var listaAnomalias = document.getElementById("lista-anomalias");
     listaAnomalias.innerHTML = "";
 
-    if (c.anomalias && c.anomalias.length > 0) {
-        c.anomalias.forEach(function (an) {
-            let ehGrave = false;
-            if (an.tipo && (an.tipo.toLowerCase().includes("outlier") || an.tipo.toLowerCase().includes("elevada") || an.tipo.toLowerCase().includes("critico"))) {
-                ehGrave = true;
-            }
+    var fatores = (scoreData && scoreData.fatores && scoreData.fatores.length > 0) ? scoreData.fatores : null;
 
-            var bgColor = ehGrave ? "rgba(255, 193, 7, 0.05)" : "rgba(0, 123, 255, 0.05)";
-            var borderColor = ehGrave ? "rgba(255, 193, 7, 0.2)" : "rgba(0, 123, 255, 0.2)";
-            var iconColor = ehGrave ? "#ffc107" : "#007bff";
+    if (fatores) {
+        fatores.forEach(function (f) {
+            var impacto   = f.impacto || 0;
+            var ehGrave   = Math.abs(impacto) > 0.1;
+            var bgColor   = ehGrave ? "rgba(220, 53, 69, 0.05)"  : "rgba(0, 123, 255, 0.05)";
+            var borderColor = ehGrave ? "rgba(220, 53, 69, 0.2)" : "rgba(0, 123, 255, 0.2)";
+            var iconColor = ehGrave ? "#dc3545" : "#007bff";
+            var direcao   = impacto > 0 ? "aumenta" : "reduz";
 
             var div = document.createElement("div");
-            div.style.backgroundColor = bgColor;
-            div.style.border = "1px solid " + borderColor;
-            div.style.padding = "1rem";
-            div.style.borderRadius = "8px";
-            div.style.display = "flex";
-            div.style.alignItems = "flex-start";
-            div.style.gap = "0.75rem";
+            div.style.cssText = "background:" + bgColor + ";border:1px solid " + borderColor + ";padding:1rem;border-radius:8px;display:flex;align-items:flex-start;gap:0.75rem;";
 
-            var iconContainer = document.createElement("div");
-            iconContainer.style.marginTop = "0.2rem";
+            var bolinha = document.createElement("div");
+            bolinha.style.cssText = "width:8px;height:8px;border-radius:50%;background:" + iconColor + ";margin-top:0.35rem;flex-shrink:0;";
 
-            if (ehGrave) {
-                iconContainer.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
-            } else {
-                var bolinha = document.createElement("div");
-                bolinha.style.width = "8px";
-                bolinha.style.height = "8px";
-                bolinha.style.borderRadius = "50%";
-                bolinha.style.backgroundColor = iconColor;
-                bolinha.style.marginTop = "0.25rem";
-                iconContainer.appendChild(bolinha);
-            }
-
-            var textContainer = document.createElement("div");
-            var title = document.createElement("div");
-            title.textContent = an.tipo || "Anomalia Detectada";
-            title.style.fontWeight = "600";
-            title.style.fontSize = "0.95rem";
-            title.style.marginBottom = "0.2rem";
+            var textDiv = document.createElement("div");
+            var titulo  = document.createElement("div");
+            titulo.textContent = f.label || f.feature;
+            titulo.style.cssText = "font-weight:600;font-size:0.95rem;margin-bottom:0.2rem;";
 
             var desc = document.createElement("div");
-            desc.textContent = an.descricao || "Este indicador contribuiu para a pontuacao de anomalia do contrato.";
-            desc.style.fontSize = "0.85rem";
-            desc.style.color = "var(--text-muted)";
-            desc.style.lineHeight = "1.4";
+            desc.textContent = "Impacto: " + (impacto > 0 ? "+" : "") + impacto.toFixed(4) + " (" + direcao + " o risco)";
+            desc.style.cssText = "font-size:0.85rem;color:var(--text-muted);";
 
-            textContainer.appendChild(title);
-            textContainer.appendChild(desc);
-
-            div.appendChild(iconContainer);
-            div.appendChild(textContainer);
+            textDiv.appendChild(titulo);
+            textDiv.appendChild(desc);
+            div.appendChild(bolinha);
+            div.appendChild(textDiv);
             listaAnomalias.appendChild(div);
         });
     } else {
         var empty = document.createElement("div");
-        empty.textContent = "Nenhuma anomalia sinalizada ou cálculo pendente.";
-        empty.style.color = "var(--text-muted)";
-        empty.style.fontSize = "0.9rem";
-        empty.style.padding = "0.5rem 0";
+        empty.textContent = "Execute o treinamento do modelo (python -m src.ml.treinar) para ver os fatores de risco.";
+        empty.style.cssText = "color:var(--text-muted);font-size:0.9rem;padding:0.5rem 0;";
         listaAnomalias.appendChild(empty);
     }
 }

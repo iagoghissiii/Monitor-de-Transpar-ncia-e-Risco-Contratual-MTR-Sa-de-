@@ -17,9 +17,9 @@ logging.basicConfig(
 FRONTEND_DIR = Path(__file__).resolve().parent.parent.parent / "frontend"
 
 app = FastAPI(
-    title="Contratos Publicos - BETA",
-    description="Visualizacao de contratos publicos do Ministerio da Saude.",
-    version="0.1.0-beta",
+    title="MTR-Saude — Monitor de Transparencia e Risco Contratual",
+    description="Deteccao de anomalias em contratos publicos de saude com IA.",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -37,9 +37,19 @@ app.include_router(contratos_router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup():
-    logging.info("Criando tabelas no banco...")
+    logging.info("Criando/migrando tabelas no banco...")
     create_tables()
-    logging.info("API BETA iniciada com sucesso!")
+    # Pré-carrega modelos ML se disponíveis
+    try:
+        from src.ml.scorer import modelos_disponiveis, _carregar
+        if modelos_disponiveis():
+            _carregar()
+            logging.info("Modelos ML carregados com sucesso.")
+        else:
+            logging.info("Modelos ML nao encontrados — execute python -m src.ml.treinar")
+    except Exception as e:
+        logging.warning("Nao foi possivel carregar modelos ML: %s", e)
+    logging.info("MTR-Saude v2.0 iniciado!")
 
 
 @app.get("/api/health")

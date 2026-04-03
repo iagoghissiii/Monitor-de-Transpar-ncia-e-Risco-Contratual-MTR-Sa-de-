@@ -28,6 +28,9 @@ env/
 # Claude Code
 .claude/
 
+# Modelos ML (gerados localmente pelo treinar_modelo.bat)
+data/models/*.pkl
+
 # Sistema
 .DS_Store
 Thumbs.db

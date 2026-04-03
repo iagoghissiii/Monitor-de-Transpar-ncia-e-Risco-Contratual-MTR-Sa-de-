@@ -52,11 +52,25 @@ async function carregarResumo() {
     try {
         const data = await fetchDashboardResumo();
         document.getElementById("total-contratos").textContent = data.total_contratos.toLocaleString("pt-BR");
-        document.getElementById("score-medio").textContent = "0.00";
+
+        // Score medio
+        var scoreEl = document.getElementById("score-medio");
+        if (scoreEl) {
+            scoreEl.textContent = data.score_medio != null ? data.score_medio.toFixed(4) : "–";
+        }
+
+        // Distribuicao de risco
+        var altoEl  = document.getElementById("alto-risco");
+        var medioEl = document.getElementById("medio-risco");
+        var baixoEl = document.getElementById("baixo-risco");
+        if (altoEl)  altoEl.textContent  = data.alto_risco  != null ? data.alto_risco.toLocaleString("pt-BR")  : "–";
+        if (medioEl) medioEl.textContent = data.medio_risco != null ? data.medio_risco.toLocaleString("pt-BR") : "–";
+        if (baixoEl) baixoEl.textContent = data.baixo_risco != null ? data.baixo_risco.toLocaleString("pt-BR") : "–";
     } catch (error) {
         console.error("Erro ao carregar resumo:", error);
         document.getElementById("total-contratos").textContent = "0";
-        document.getElementById("score-medio").textContent = "0.00";
+        var scoreEl = document.getElementById("score-medio");
+        if (scoreEl) scoreEl.textContent = "0.00";
     }
 }
 
