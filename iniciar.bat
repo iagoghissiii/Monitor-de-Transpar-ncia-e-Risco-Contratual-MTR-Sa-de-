@@ -1,5 +1,6 @@
 @echo off
 chcp 65001 >nul
+cd /d "%~dp0"
 title MTR-Saúde — Monitor de Transparência e Risco Contratual
 
 echo ============================================
@@ -10,18 +11,18 @@ echo.
 :: Verifica se o Python está disponível
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERRO] Python não encontrado. Instale o Python 3.10+ e tente novamente.
+    echo [ERRO] Python nao encontrado. Instale o Python 3.10+ e tente novamente.
     pause
-    exit /b 1
+    exit /b
 )
 
 :: Instala dependências
 echo [1/4] Instalando dependências...
 pip install -r "%~dp0requirements.txt" --quiet
 if errorlevel 1 (
-    echo [ERRO] Falha ao instalar dependências.
+    echo [ERRO] Falha ao instalar dependencias.
     pause
-    exit /b 1
+    exit /b
 )
 echo       OK.
 echo.
