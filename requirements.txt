@@ -8,3 +8,16 @@ sqlalchemy
 # Utils
 python-dotenv
 pydantic
+
+# ETL
+requests
+tqdm
+
+# Data & ML (Etapa 2)
+pandas
+numpy
+scikit-learn
+xgboost
+imbalanced-learn
+shap
+joblib

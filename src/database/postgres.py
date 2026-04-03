@@ -48,6 +48,7 @@ class Contrato(Base):
     __tablename__ = "contratos"
 
     id = Column(Integer, primary_key=True, index=True)
+    id_externo = Column(String(50), unique=True, index=True)  # ID do Portal da Transparência
     numero = Column(String(50), index=True)
     objeto = Column(Text)
     valor = Column(Float, nullable=False)
