@@ -1,0 +1,10 @@
+# API
+fastapi
+uvicorn
+
+# Database
+sqlalchemy
+
+# Utils
+python-dotenv
+pydantic
