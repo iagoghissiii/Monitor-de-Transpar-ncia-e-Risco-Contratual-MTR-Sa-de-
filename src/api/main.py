@@ -39,14 +39,13 @@ app.include_router(contratos_router, prefix="/api/v1")
 async def startup():
     logging.info("Criando/migrando tabelas no banco...")
     create_tables()
-    # Pré-carrega modelos ML se disponíveis
+    # Pre-carrega modelos ML se disponiveis
     try:
         from src.ml.scorer import modelos_disponiveis, _carregar
         if modelos_disponiveis():
-            _carregar()
-            logging.info("Modelos ML carregados com sucesso.")
+            _carregar()  # detecta automaticamente se ha modelos novos no disco
         else:
-            logging.info("Modelos ML nao encontrados — execute python -m src.ml.treinar")
+            logging.info("Modelos ML nao encontrados — execute treinar_modelo.bat")
     except Exception as e:
         logging.warning("Nao foi possivel carregar modelos ML: %s", e)
     logging.info("MTR-Saude v2.0 iniciado!")

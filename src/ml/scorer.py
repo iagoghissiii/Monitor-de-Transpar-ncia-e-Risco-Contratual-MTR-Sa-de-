@@ -1,51 +1,67 @@
 """
 Scorea contratos individuais usando os modelos treinados.
 
-Os modelos sao carregados uma unica vez (lazy loading) e reutilizados
-durante a vida da aplicacao (singleton em memoria).
+Carrega os modelos na primeira chamada (lazy loading) e detecta automaticamente
+se os arquivos foram atualizados no disco (novo treinamento), recarregando sem
+precisar reiniciar o servidor.
 """
 
 import numpy as np
 import joblib
+import logging
 from pathlib import Path
 from src.ml.features import FEATURE_COLS, FEATURE_LABELS, extrair_features_contrato
+
+logger = logging.getLogger(__name__)
 
 MODELS_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "models"
 
 LIMIAR_ALTO  = 0.65
 LIMIAR_MEDIO = 0.40
 
-# Singleton dos modelos
-_if_model  = None
-_if_scaler = None
-_xgb_model = None
-_explainer = None
-_modelos_prontos = False
+_ARQUIVOS = ("isolation_forest.pkl", "if_scaler.pkl",
+             "xgboost_risco.pkl",    "shap_explainer.pkl")
+
+# Singleton — recarregado automaticamente se os arquivos mudarem
+_cache: dict = {
+    "if_model":  None,
+    "if_scaler": None,
+    "xgb_model": None,
+    "explainer": None,
+    "mtime":     0.0,   # timestamp do ultimo carregamento
+}
 
 
 def modelos_disponiveis() -> bool:
-    """Retorna True se os arquivos de modelo existem no disco."""
-    return all(
-        (MODELS_DIR / nome).exists()
-        for nome in ("isolation_forest.pkl", "if_scaler.pkl",
-                     "xgboost_risco.pkl", "shap_explainer.pkl")
-    )
+    return all((MODELS_DIR / a).exists() for a in _ARQUIVOS)
+
+
+def _mtime_atual() -> float:
+    """Retorna o timestamp mais recente dos arquivos de modelo."""
+    try:
+        return max((MODELS_DIR / a).stat().st_mtime for a in _ARQUIVOS)
+    except Exception:
+        return 0.0
 
 
 def _carregar() -> None:
-    global _if_model, _if_scaler, _xgb_model, _explainer, _modelos_prontos
-    if _modelos_prontos:
-        return
+    """Carrega (ou recarrega) modelos se necessario."""
     if not modelos_disponiveis():
         raise FileNotFoundError(
             "Modelos nao encontrados em data/models/. "
-            "Execute primeiro: python -m src.ml.treinar"
+            "Execute: treinar_modelo.bat"
         )
-    _if_model  = joblib.load(MODELS_DIR / "isolation_forest.pkl")
-    _if_scaler = joblib.load(MODELS_DIR / "if_scaler.pkl")
-    _xgb_model = joblib.load(MODELS_DIR / "xgboost_risco.pkl")
-    _explainer = joblib.load(MODELS_DIR / "shap_explainer.pkl")
-    _modelos_prontos = True
+    mtime = _mtime_atual()
+    if mtime <= _cache["mtime"]:
+        return  # modelos em memoria ainda sao os mais recentes
+
+    logger.info("Carregando modelos ML do disco (mtime=%.0f)...", mtime)
+    _cache["if_model"]  = joblib.load(MODELS_DIR / "isolation_forest.pkl")
+    _cache["if_scaler"] = joblib.load(MODELS_DIR / "if_scaler.pkl")
+    _cache["xgb_model"] = joblib.load(MODELS_DIR / "xgboost_risco.pkl")
+    _cache["explainer"] = joblib.load(MODELS_DIR / "shap_explainer.pkl")
+    _cache["mtime"]     = mtime
+    logger.info("Modelos ML carregados com sucesso.")
 
 
 def _nivel_risco(score: float) -> str:
@@ -56,25 +72,42 @@ def _nivel_risco(score: float) -> str:
     return "baixo"
 
 
+def _extrair_shap(explainer, X: np.ndarray, classe_idx: int) -> np.ndarray:
+    """
+    Extrai valores SHAP para a classe `classe_idx`.
+
+    Compativel com SHAP >= 0.40 (retorna ndarray 3D) e versoes anteriores
+    (retorna lista de arrays 2D, um por classe).
+    """
+    vals = explainer.shap_values(X)
+
+    if isinstance(vals, list):
+        # Formato antigo: list[n_classes] de arrays shape (n_samples, n_features)
+        arr = vals[classe_idx]           # (n_samples, n_features)
+        return arr[0]                    # (n_features,)
+
+    # Formato novo: ndarray shape (n_samples, n_features, n_classes)
+    if vals.ndim == 3:
+        return vals[0, :, classe_idx]   # (n_features,)
+
+    # Fallback — binario ou formato inesperado
+    if vals.ndim == 2:
+        return vals[0]
+    return vals.flatten()[:len(FEATURE_COLS)]
+
+
 def score_contrato(contrato) -> dict:
     """
-    Calcula score de anomalia de um contrato em tempo real.
-
-    Parametro:
-        contrato — ORM Contrato (com atributos valor, data_inicio, etc.)
+    Calcula score + tipo de anomalia + top 5 fatores SHAP de um contrato.
 
     Retorno:
         {
-            "score_anomalia": float,       # 0.0 – 1.0
-            "nivel_risco":    str,         # "baixo" | "medio" | "alto"
+            "score_anomalia": float,      # 0.0 – 1.0
+            "nivel_risco":    str,        # "baixo" | "medio" | "alto"
+            "tipo_anomalia":  str,        # "normal" | "falha_preenchimento" | "fraude_intencional"
             "fatores": [
-                {
-                    "feature": str,        # nome interno
-                    "label":   str,        # nome legivel em portugues
-                    "valor":   float,      # valor da feature para este contrato
-                    "impacto": float,      # SHAP value (positivo = aumenta risco)
-                },
-                ...  # top 5 fatores por impacto absoluto
+                {"feature": str, "label": str, "valor": float, "impacto": float},
+                ...  # top 5 por |impacto|
             ]
         }
     """
@@ -83,38 +116,40 @@ def score_contrato(contrato) -> dict:
     feats = extrair_features_contrato(contrato)
     X     = np.array([[feats[col] for col in FEATURE_COLS]], dtype=float)
 
-    # Score pelo Isolation Forest
-    raw   = _if_model.score_samples(X)
+    # ── Isolation Forest → score 0-1 ────────────────────────────────────────
+    raw   = _cache["if_model"].score_samples(X)
     score = float(np.clip(
-        _if_scaler.transform((-raw).reshape(-1, 1)).flatten()[0],
+        _cache["if_scaler"].transform((-raw).reshape(-1, 1)).flatten()[0],
         0.0, 1.0,
     ))
-
     nivel = _nivel_risco(score)
 
-    # XGBoost: tipo de anomalia (normal / falha_preenchimento / fraude_intencional)
-    y_pred      = int(_xgb_model.predict(X)[0])
-    _LABEL_NOME = {0: "normal", 1: "falha_preenchimento", 2: "fraude_intencional"}
-    tipo        = _LABEL_NOME.get(y_pred, "normal")
+    # ── XGBoost → tipo de anomalia ───────────────────────────────────────────
+    y_pred = int(_cache["xgb_model"].predict(X)[0])
+    _LABEL = {0: "normal", 1: "falha_preenchimento", 2: "fraude_intencional"}
+    tipo   = _LABEL.get(y_pred, "normal")
 
-    # SHAP — valores para a classe XGBoost prevista
-    shap_vals   = _explainer.shap_values(X)
-    importances = shap_vals[y_pred][0]
-
-    fatores = [
-        {
-            "feature": col,
-            "label":   FEATURE_LABELS.get(col, col),
-            "valor":   float(feats[col]),
-            "impacto": float(importances[i]),
-        }
-        for i, col in enumerate(FEATURE_COLS)
-    ]
-    fatores.sort(key=lambda x: abs(x["impacto"]), reverse=True)
+    # ── SHAP → top 5 fatores ─────────────────────────────────────────────────
+    try:
+        importances = _extrair_shap(_cache["explainer"], X, y_pred)
+        fatores = [
+            {
+                "feature": col,
+                "label":   FEATURE_LABELS.get(col, col),
+                "valor":   float(feats[col]),
+                "impacto": float(importances[i]),
+            }
+            for i, col in enumerate(FEATURE_COLS)
+        ]
+        fatores.sort(key=lambda x: abs(x["impacto"]), reverse=True)
+        fatores = fatores[:5]
+    except Exception as e:
+        logger.warning("SHAP falhou para contrato %s: %s", getattr(contrato, "id", "?"), e)
+        fatores = []
 
     return {
         "score_anomalia": score,
         "nivel_risco":    nivel,
         "tipo_anomalia":  tipo,
-        "fatores":        fatores[:5],
+        "fatores":        fatores,
     }

@@ -191,8 +191,34 @@ async function consultarReceitaFederal() {
     var cnpjText = document.getElementById("det-cpf-cnpj").innerText;
     var cnpj = cnpjText.replace(/[^0-9]/g, '');
 
-    if (!cnpj || cnpj.length !== 14) {
-        alert("CNPJ inválido ou não disponível para consulta.");
+    if (!cnpj) {
+        alert("Nenhum CPF/CNPJ informado para este fornecedor.");
+        return;
+    }
+
+    if (cnpj.length === 11) {
+        // CPF — pessoa fisica: nao ha consulta publica disponivel via API
+        var resultDiv = document.getElementById("receita-resultado");
+        resultDiv.innerHTML = `
+            <div style="display:flex;align-items:flex-start;gap:0.75rem;padding:1rem;background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.3);border-radius:8px;">
+                <div style="font-size:1.2rem;">ℹ️</div>
+                <div>
+                    <div style="font-weight:600;margin-bottom:0.3rem;">Fornecedor Pessoa Fisica (CPF)</div>
+                    <div style="font-size:0.85rem;color:var(--text-muted);line-height:1.5;">
+                        A consulta automatica pela BrasilAPI esta disponivel apenas para <strong>CNPJ (Pessoa Juridica)</strong>.
+                        Para verificar dados de pessoa fisica, acesse o
+                        <a href="https://www.gov.br/receitafederal/pt-br" target="_blank" style="color:var(--accent);">portal oficial da Receita Federal</a>.
+                        <br><br>
+                        ⚠️ <strong>Atenção:</strong> Contratos com fornecedor PF de alto valor merecem verificação manual — é um dos sinais identificados pelo TCU (Operação Saúde Oculta).
+                    </div>
+                </div>
+            </div>`;
+        resultDiv.style.display = "block";
+        return;
+    }
+
+    if (cnpj.length !== 14) {
+        alert("Documento invalido: " + cnpj.length + " digitos. Esperado CPF (11) ou CNPJ (14).");
         return;
     }
 
